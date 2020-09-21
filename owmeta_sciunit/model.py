@@ -7,6 +7,7 @@ from owmeta_core.collections import List
 from sciunit.models import Model as SUModel
 from sciunit.models.runnable import RunnableModel as SURunnableModel
 from neuronunit.models.lems import LEMSModel as SULEMSModel
+from neuronunit.models.channel import ChannelModel as SUChannelModel
 
 from . import (SU_CONTEXT, NU_CONTEXT, BASE_DATA_NS, BASE_SCHEMA_NS, BASE_NU_SCHEMA_NS,
                BASE_NU_DATA_NS)
@@ -53,8 +54,7 @@ class ModelClass(type(DataObject)):
             self.sciunit_model_class = dct['sciunit_model_class']
         super().__init__(name, bases, dct)
 
-    def add(self):
-        rdto = self.rdf_type_object
+    def augment_rdf_type_object(self, rdto):
         rdto.attach_property(SciUnitModelClassProperty)
 
         if not getattr(self, 'sciunit_model_class', None):
@@ -166,14 +166,28 @@ class RunnableModel(Model):
         return mod
 
 
-class LEMSModel(RunnableModel):
-    sciunit_model_class = SULEMSModel
-
-    class_context = NU_CONTEXT
+class NeuronUnitNS:
+    '''
+    Namespacing for NeuronUnit DataObjects
+    '''
 
     base_data_namespace = BASE_NU_DATA_NS
 
     base_namespace = BASE_NU_SCHEMA_NS
+
+
+class LEMSModel(RunnableModel, NeuronUnitNS):
+    """A generic LEMS model."""
+    sciunit_model_class = SULEMSModel
+
+    class_context = NU_CONTEXT
+
+
+class ChannelModel(LEMSModel, NeuronUnitNS):
+    """A model for ion channels"""
+    sciunit_model_class = SUChannelModel
+
+    class_context = NU_CONTEXT
 
 # XXX: Maybe auto-generate the model class as far as capabilities by searching mro(), but
 # it doesn't look like the parameters are queryable in general
