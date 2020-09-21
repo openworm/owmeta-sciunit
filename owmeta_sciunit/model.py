@@ -1,16 +1,15 @@
 import rdflib
 
-from owmeta_core.dataobject import DataObject, ObjectProperty, PythonClassDescription
-from owmeta_core.dataobject_property import ObjectProperty
+from owmeta_core.dataobject import (DataObject, ObjectProperty, DatatypeProperty, PythonClassDescription, PythonModule)
+import owmeta_core.dataobject_property as DOP
 from owmeta_core.collections import List
+
 from sciunit.models import Model as SUModel
+from sciunit.models.runnable import RunnableModel as SURunnableModel
+from neuronunit.models.lems import LEMSModel as SULEMSModel
 
-
-BASE_SCHEMA_URL = 'http://schema.openworm.org/2020/07/sciunit'
-BASE_SCHEMA_NS = rdflib.Namespace[BASE_SCHEMA_URL + '/']
-
-BASE_DATA_URL = 'http://data.openworm.org/sciunit'
-BASE_DATA_NS = rdflib.Namespace[BASE_DATA_URL + '/']
+from . import (SU_CONTEXT, NU_CONTEXT, BASE_DATA_NS, BASE_SCHEMA_NS, BASE_NU_SCHEMA_NS,
+               BASE_NU_DATA_NS)
 
 
 class SciUnitNS:
@@ -18,17 +17,17 @@ class SciUnitNS:
     Namespacing for SciUnit DataObjects
     '''
 
-    class_context = BASE_SCHEMA_URL
-
-    schema_namespace = BASE_DATA_NS
+    base_data_namespace = BASE_DATA_NS
 
     base_namespace = BASE_SCHEMA_NS
 
 
-class ModelCapability(SciUnitNS, DataObject):
+class Capability(SciUnitNS, DataObject):
     '''
     Describes a Capability of a SciUnit Model
     '''
+
+    class_context = SU_CONTEXT
 
     python_class = ObjectProperty(value_type=PythonClassDescription)
     '''
@@ -41,12 +40,36 @@ class RunnableCapability(SciUnitNS, DataObject):
     Indicates a runnable SciUnit model
     '''
 
+    class_context = SU_CONTEXT
+
 
 class ModelClass(type(DataObject)):
-    def init_rdf_type_object(self):
-        super().init_rdf_type_object()
+
+    context_carries = ('sciunit_model_class',)
+
+    def __init__(self, name, bases, dct):
+        self.sciunit_model_class = None
+        if 'sciunit_model_class' in dct:
+            self.sciunit_model_class = dct['sciunit_model_class']
+        super().__init__(name, bases, dct)
+
+    def add(self):
         rdto = self.rdf_type_object
         rdto.attach_property(SciUnitModelClassProperty)
+
+        if not getattr(self, 'sciunit_model_class', None):
+            raise AttributeError('Expecting `sciunit_model_class` attribute to be defined')
+
+        sucn = self.sciunit_model_class.__name__
+        sumn = self.sciunit_model_class.__module__
+
+        ctx = rdto.context
+
+        pcd = ctx(PythonClassDescription)()
+        pcd.name(sucn)
+        mod = ctx(PythonModule)(name=sumn)
+        pcd.module(mod)
+        rdto.sciunit_model_class(pcd)
 
 
 class Model(SciUnitNS, DataObject, metaclass=ModelClass):
@@ -54,10 +77,16 @@ class Model(SciUnitNS, DataObject, metaclass=ModelClass):
     A SciUnit model
     '''
 
+    class_context = SU_CONTEXT
+
+    sciunit_model_class = SUModel
+
     capability = ObjectProperty(value_type=Capability)
     '''
     Capabilities the model has
     '''
+
+    rdf_type_object_deferred = True
 
     def load_sciunit_model_class(self):
         return self.python_class().load_class()
@@ -67,19 +96,26 @@ class Model(SciUnitNS, DataObject, metaclass=ModelClass):
         return cls()
 
 
-class SciUnitModelClassProperty(ObjectProperty):
+class SciUnitModelClassProperty(SciUnitNS, DOP.ObjectProperty):
     '''
     Property that associates a Model with its SciUnitModel
     '''
+    class_context = SU_CONTEXT
+
     linkName = 'sciunit_model_class'
-    owner_type = Model
     value_type = PythonClassDescription
+    owner_type = Model
 
 
-class ModelProperty(SciUnitNS, ObjectProperty):
+Model.init_rdf_type_object()
+
+
+class ModelProperty(SciUnitNS, DOP.ObjectProperty):
     '''
     Property for associating an object with a SciUnit model
     '''
+    class_context = SU_CONTEXT
+
     value_type = Model
 
 
@@ -87,6 +123,8 @@ class RunnableModelAttribute(SciUnitNS, DataObject):
     '''
     Attribute of a runnable model
     '''
+
+    class_context = SU_CONTEXT
 
     name = DatatypeProperty()
     value = DatatypeProperty()
@@ -97,17 +135,15 @@ class RunnableModel(Model):
     A runnable SciUnit Model
     '''
 
+    class_context = SU_CONTEXT
+
+    sciunit_model_class = SURunnableModel
+
     attribute = ObjectProperty(value_type=RunnableModelAttribute)
     '''
     Attribute for the Model
     '''
     def __init__(self, python_class=None, **kwargs):
-        if python_class is None:
-            pcd = PythonClassDescription()
-            pcd.name('RunnableModel')
-            mod = PythonModule(name='sciunit.models.runnable')
-            pcd.module(mod)
-            python_class = pcd
         super().__init__(python_class=python_class, **kwargs)
 
     def load_attributes(self):
@@ -131,7 +167,13 @@ class RunnableModel(Model):
 
 
 class LEMSModel(RunnableModel):
-    pass
+    sciunit_model_class = SULEMSModel
+
+    class_context = NU_CONTEXT
+
+    base_data_namespace = BASE_NU_DATA_NS
+
+    base_namespace = BASE_NU_SCHEMA_NS
 
 # XXX: Maybe auto-generate the model class as far as capabilities by searching mro(), but
 # it doesn't look like the parameters are queryable in general

@@ -24,6 +24,7 @@ setup(
     install_requires=[
         'owmeta-core',
         'sciunit',
+        'neuronunit',
         'rdflib>=4.1.2',
     ],
     version=version,
