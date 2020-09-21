@@ -3,7 +3,7 @@ from owmeta_core import BASE_CONTEXT
 from owmeta_core.context import ClassContext
 
 
-__version__ = '0.0.1'
+__version__ = '0.0.1.dev0'
 
 
 BASE_SCHEMA_URL = 'http://schema.openworm.org/2020/07/sciunit'
