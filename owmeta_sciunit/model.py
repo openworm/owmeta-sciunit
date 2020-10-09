@@ -5,25 +5,17 @@ import owmeta_core.dataobject_property as DOP
 from owmeta_core.collections import List
 
 from sciunit.models import Model as SUModel
+from sciunit.capabilities import Runnable as SURunnable
 from sciunit.models.runnable import RunnableModel as SURunnableModel
 from neuronunit.models.lems import LEMSModel as SULEMSModel
 from neuronunit.models.channel import ChannelModel as SUChannelModel
 
 from . import (SU_CONTEXT, NU_CONTEXT, BASE_DATA_NS, BASE_SCHEMA_NS, BASE_NU_SCHEMA_NS,
                BASE_NU_DATA_NS)
+from .base import SciUnit, SciUnitNS
 
 
-class SciUnitNS:
-    '''
-    Namespacing for SciUnit DataObjects
-    '''
-
-    base_data_namespace = BASE_DATA_NS
-
-    base_namespace = BASE_SCHEMA_NS
-
-
-class Capability(SciUnitNS, DataObject):
+class Capability(SciUnit):
     '''
     Describes a Capability of a SciUnit Model
     '''
@@ -36,50 +28,24 @@ class Capability(SciUnitNS, DataObject):
     '''
 
 
-class RunnableCapability(SciUnitNS, DataObject):
+class RunnableCapability(Capability):
     '''
     Indicates a runnable SciUnit model
     '''
 
+    sciunit_class = SURunnable
+
     class_context = SU_CONTEXT
 
 
-class ModelClass(type(DataObject)):
-
-    context_carries = ('sciunit_model_class',)
-
-    def __init__(self, name, bases, dct):
-        self.sciunit_model_class = None
-        if 'sciunit_model_class' in dct:
-            self.sciunit_model_class = dct['sciunit_model_class']
-        super().__init__(name, bases, dct)
-
-    def augment_rdf_type_object(self, rdto):
-        rdto.attach_property(SciUnitModelClassProperty)
-
-        if not getattr(self, 'sciunit_model_class', None):
-            raise AttributeError('Expecting `sciunit_model_class` attribute to be defined')
-
-        sucn = self.sciunit_model_class.__name__
-        sumn = self.sciunit_model_class.__module__
-
-        ctx = rdto.context
-
-        pcd = ctx(PythonClassDescription)()
-        pcd.name(sucn)
-        mod = ctx(PythonModule)(name=sumn)
-        pcd.module(mod)
-        rdto.sciunit_model_class(pcd)
-
-
-class Model(SciUnitNS, DataObject, metaclass=ModelClass):
+class Model(SciUnit):
     '''
     A SciUnit model
     '''
 
     class_context = SU_CONTEXT
 
-    sciunit_model_class = SUModel
+    sciunit_class = SUModel
 
     capability = ObjectProperty(value_type=Capability)
     '''
@@ -88,26 +54,9 @@ class Model(SciUnitNS, DataObject, metaclass=ModelClass):
 
     rdf_type_object_deferred = True
 
-    def load_sciunit_model_class(self):
-        return self.python_class().load_class()
-
     def load_sciunit_model(self):
-        cls = self.load_sciunit_model_class()
+        cls = type(self).load_sciunit_class()
         return cls()
-
-
-class SciUnitModelClassProperty(SciUnitNS, DOP.ObjectProperty):
-    '''
-    Property that associates a Model with its SciUnitModel
-    '''
-    class_context = SU_CONTEXT
-
-    linkName = 'sciunit_model_class'
-    value_type = PythonClassDescription
-    owner_type = Model
-
-
-Model.init_rdf_type_object()
 
 
 class ModelProperty(SciUnitNS, DOP.ObjectProperty):
@@ -119,7 +68,7 @@ class ModelProperty(SciUnitNS, DOP.ObjectProperty):
     value_type = Model
 
 
-class RunnableModelAttribute(SciUnitNS, DataObject):
+class RunnableModelAttribute(SciUnit):
     '''
     Attribute of a runnable model
     '''
@@ -137,7 +86,7 @@ class RunnableModel(Model):
 
     class_context = SU_CONTEXT
 
-    sciunit_model_class = SURunnableModel
+    sciunit_class = SURunnableModel
 
     attribute = ObjectProperty(value_type=RunnableModelAttribute)
     '''
@@ -178,14 +127,14 @@ class NeuronUnitNS:
 
 class LEMSModel(RunnableModel, NeuronUnitNS):
     """A generic LEMS model."""
-    sciunit_model_class = SULEMSModel
+    sciunit_class = SULEMSModel
 
     class_context = NU_CONTEXT
 
 
 class ChannelModel(LEMSModel, NeuronUnitNS):
     """A model for ion channels"""
-    sciunit_model_class = SUChannelModel
+    sciunit_class = SUChannelModel
 
     class_context = NU_CONTEXT
 
