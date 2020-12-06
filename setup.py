@@ -19,7 +19,7 @@ for line in open('owmeta_sciunit/__init__.py'):
 
 
 setup(
-    name='owmeta',
+    name='owmeta-sciunit',
     setup_requires=['pytest-runner'],
     install_requires=[
         'owmeta-core',

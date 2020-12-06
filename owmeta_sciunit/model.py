@@ -1,13 +1,7 @@
-import rdflib
-
-from owmeta_core.dataobject import (DataObject,
-                                    ObjectProperty,
+from owmeta_core.dataobject import (ObjectProperty,
                                     DatatypeProperty,
-                                    PythonClassDescription,
-                                    PythonModule,
-                                    TypeDataObject)
+                                    PythonClassDescription)
 import owmeta_core.dataobject_property as DOP
-from owmeta_core.collections import List
 
 from sciunit.models import Model as SUModel
 import sciunit.capabilities as SUCap
@@ -16,9 +10,9 @@ from neuronunit.models.lems import LEMSModel as NULEMSModel
 from neuronunit.models.reduced import ReducedModel as NUReducedModel
 from neuronunit.models.channel import ChannelModel as NUChannelModel
 
-from . import (SU_CONTEXT, NU_CONTEXT, BASE_DATA_NS, BASE_SCHEMA_NS, BASE_NU_SCHEMA_NS,
+from . import (SU_CONTEXT, NU_CONTEXT, BASE_NU_SCHEMA_NS,
                BASE_NU_DATA_NS)
-from .base import SciUnit, SciUnitNS, SciUnitClassProperty
+from .base import SciUnit, SciUnitNS
 
 
 class Capability(SciUnit):
@@ -81,8 +75,22 @@ class Model(SciUnit, metaclass=ModelMeta):
 
     rdf_type_object_deferred = True
 
-    def load_sciunit_model(self):
-        return type(self).load_sciunit_class()
+    name = DatatypeProperty(__doc__='Name of the model')
+
+    def load_sciunit_models(self):
+        '''
+        Load the sciunit model for this model class
+
+        .. note:
+
+        The default implementation assumes there are no parameters or other setup --
+        probably not what you want.
+        '''
+
+        for model in self.load():
+            yield model.contextualize(self.context).init_model()
+
+    def init_model(self): raise NotImplementedError
 
 
 class CapabilityProperty(SciUnitNS, DOP.ObjectProperty):
@@ -117,6 +125,9 @@ class RunnableModelAttribute(SciUnit):
     value = DatatypeProperty()
 
 
+Model.init_rdf_type_object()
+
+
 class RunnableModel(Model):
     '''
     A runnable SciUnit Model
@@ -126,29 +137,24 @@ class RunnableModel(Model):
 
     sciunit_class = SURunnableModel
 
-    attribute = ObjectProperty(value_type=RunnableModelAttribute)
-    '''
-    Attribute for the Model
-    '''
-    def __init__(self, python_class=None, **kwargs):
-        super().__init__(python_class=python_class, **kwargs)
+    attribute = ObjectProperty(value_type=RunnableModelAttribute,
+            __doc__='Attribute for the Model')
 
     def load_attributes(self):
         '''
         Load the module attributes into `dict` from the `attribute`
         '''
-        attr = self.attribute()
         attrs = dict()
-        for a in attr.load():
+        for a in self.attribute.get():
             attrs[a.name()] = a.value()
         return attrs
 
-    def load_sciunit_model(self):
-        '''
-        Loads the SciUnit model and sets attributes
-        '''
-        mod = self.load_sciunit_model()
+    def init_model(self):
+        mod = self.sciunit_class(name=self.name())
         attrs = self.load_attributes()
+        # XXX: RunnableModel has some abstruse mechanism by which the "back-end" gets
+        # attributes set which is different from what happens when you pass attrs to the
+        # initializer, so we just call set_attrs here...
         mod.set_attrs(**attrs)
         return mod
 
@@ -163,21 +169,33 @@ class NeuronUnitNS:
     base_namespace = BASE_NU_SCHEMA_NS
 
 
-class LEMSModel(RunnableModel, NeuronUnitNS):
+class LEMSModel(NeuronUnitNS, RunnableModel):
     """A generic LEMS model"""
     sciunit_class = NULEMSModel
 
     class_context = NU_CONTEXT
 
+    LEMS_file_path_or_url = DatatypeProperty(__doc__='LEMS file')
 
-class ChannelModel(LEMSModel, NeuronUnitNS):
+    def init_model(self):
+        ''' Loads the SciUnit model and sets attributes '''
+
+        res = self.sciunit_class(
+                self.LEMS_file_path_or_url(),
+                name=self.name())
+        attrs = self.load_attributes()
+        res.set_attrs(**attrs)
+        return res
+
+
+class ChannelModel(LEMSModel):
     """A model for ion channels"""
     sciunit_class = NUChannelModel
 
     class_context = NU_CONTEXT
 
 
-class ReducedModel(LEMSModel, NeuronUnitNS):
+class ReducedModel(LEMSModel):
     """A reduced model"""
     sciunit_class = NUReducedModel
 

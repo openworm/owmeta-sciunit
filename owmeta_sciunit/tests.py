@@ -15,6 +15,16 @@ class Test(SciUnit):
     name = DO.DatatypeProperty()
     description = DO.DatatypeProperty()
 
+    def create_sciunit_test(self):
+        '''
+        Creates a SciUnit Test instance corresponding to this
+        `~owmeta_core.dataobject.DataObject`
+
+        The default implementation assumes the initializer takes no arguments.
+        '''
+        cls = type(self).load_sciunit_class()
+        return cls()
+
 
 class _Namespace:
     pass

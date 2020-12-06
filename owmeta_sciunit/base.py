@@ -1,7 +1,12 @@
-from owmeta_core.dataobject import (DataObject, ObjectProperty, DatatypeProperty, PythonClassDescription, PythonModule)
+import logging
+
+from owmeta_core.dataobject import (DataObject, PythonClassDescription, PythonModule)
 import owmeta_core.dataobject_property as DOP
 
 from . import SU_CONTEXT, BASE_DATA_NS, BASE_SCHEMA_NS
+
+
+L = logging.getLogger(__name__)
 
 
 class SciUnitNS:
@@ -15,14 +20,14 @@ class SciUnitNS:
 
 
 class SciUnitClass(type(DataObject)):
+    '''
+    Attributes
+    ----------
+    sciunit_class : type
+        The SciUnit class corresponding to this class
+    '''
 
     context_carries = ('sciunit_class',)
-
-    def __init__(self, name, bases, dct):
-        self.sciunit_class = None
-        if 'sciunit_class' in dct:
-            self.sciunit_class = dct['sciunit_class']
-        super().__init__(name, bases, dct)
 
     def augment_rdf_type_object(self, rdto):
         if not getattr(self, 'sciunit_class', None):
@@ -41,8 +46,17 @@ class SciUnitClass(type(DataObject)):
         pcd.module(mod)
         rdto.sciunit_class(pcd)
 
-    def load_sciunit_class(self):
-        return self.rdf_type_object.sciunit_class().load_class()
+    def load_sciunit_classes(self):
+        '''
+        Load the SciUnit class(es) for this DataObject class.
+
+        If you already have the specific class, the return value should be equal to
+        `self.sciunit_class`
+        '''
+        rdto = self.rdf_type_object.contextualize(self.context)
+        for c in rdto.sciunit_class.get():
+            yield c.resolve_class()
+
 
 
 class SciUnit(SciUnitNS, DataObject, metaclass=SciUnitClass):
