@@ -22,7 +22,7 @@ class OWMSciunitModel:
         '''
         List kinds of model
         '''
-        from owmeta_core.dataobject import TypeDataObject, RDFSSubClassOfProperty
+        from owmeta_core.dataobject import RDFSClass, RDFSSubClassOfProperty
         from owmeta_core.graph_object import ZeroOrMoreTQLayer
         from owmeta_core.rdf_query_util import zomifier
 
@@ -30,7 +30,7 @@ class OWMSciunitModel:
         ctx = self._owm.default_context.stored
 
         rdfto = ctx(Model.rdf_type_object)
-        sc = ctx(TypeDataObject)()
+        sc = ctx(RDFSClass)()
         sc.attach_property(RDFSSubClassOfProperty)(rdfto)
 
         nm = conf['rdf.graph'].namespace_manager

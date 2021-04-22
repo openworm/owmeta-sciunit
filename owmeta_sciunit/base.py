@@ -58,15 +58,17 @@ class SciUnitClass(type(DataObject)):
             yield c.resolve_class()
 
 
-
 class SciUnit(SciUnitNS, DataObject, metaclass=SciUnitClass):
+    '''
+    Base class for SciUnit `DataObject`s
+    '''
     class_context = SU_CONTEXT
     rdf_type_object_deferred = True
 
 
 class SciUnitClassProperty(SciUnitNS, DOP.ObjectProperty):
     '''
-    Property that associates a SciUnit type with its SciUnit class
+    Property that associates a SciUnit `DataObject` sub-class with its SciUnit class
     '''
     class_context = SU_CONTEXT
 

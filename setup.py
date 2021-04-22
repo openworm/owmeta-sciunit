@@ -2,8 +2,6 @@
 #
 
 from setuptools import setup
-import os
-import sys
 
 
 long_description = """
@@ -22,7 +20,7 @@ setup(
     name='owmeta-sciunit',
     setup_requires=['pytest-runner'],
     install_requires=[
-        'owmeta-core',
+        'owmeta-core>=0.14.0.dev0',
         'sciunit',
         'neuronunit',
         'rdflib>=4.1.2',
