@@ -2,5 +2,6 @@
 repo: openworm/owmeta-sciunit
 shortDescription: "Classes for describing SciUnit models, tests, and results with owmeta"
 coordinator: mark@openworm.org
+keywords: ['sciunit', 'model-validation']
 parent:
   - openworm/owmeta-core
